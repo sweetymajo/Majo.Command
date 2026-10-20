@@ -1,0 +1,138 @@
+name: Publish NuGet
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish NuGet
+    runs-on: ubuntu-latest
+
+    environment: nuget
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        shell: bash
+        run: |
+          VERSION=$(dotnet msbuild Majo.Command/Majo.Command.csproj -getProperty:Version -nologo)
+
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Invalid package version: $VERSION"
+            echo "Expected version format: x.y.z"
+            exit 1
+          fi
+
+          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=v$VERSION" >> "$GITHUB_ENV"
+
+          echo "Package version: $VERSION"
+          echo "Release tag: v$VERSION"
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" > /dev/null 2>&1; then
+            echo "Tag ${RELEASE_TAG} already exists."
+            exit 1
+          fi
+
+      # NuGet.config contains artifacts/nuget as a local source.
+      - name: Prepare local NuGet source
+        run: mkdir -p artifacts/nuget
+
+      - name: Restore
+        run: dotnet restore Majo.Command.slnx -p:UsePackageReference=false
+
+      - name: Build
+        run: dotnet build Majo.Command.slnx -c Release --no-restore -p:UsePackageReference=false
+
+      - name: Test
+        run: dotnet test Majo.Command.Test/Majo.Command.Test.csproj -c Release --no-build --no-restore -p:UsePackageReference=false
+
+      - name: Pack
+        run: dotnet pack Majo.Command/Majo.Command.csproj -c Release --no-build
+
+      - name: Validate NuGet package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE="artifacts/nuget/Majo.Command.${PACKAGE_VERSION}.nupkg"
+          SYMBOL_PACKAGE="artifacts/nuget/Majo.Command.${PACKAGE_VERSION}.snupkg"
+
+          if [ ! -f "$PACKAGE" ]; then
+            echo "NuGet package was not generated: $PACKAGE"
+            exit 1
+          fi
+
+          if [ ! -f "$SYMBOL_PACKAGE" ]; then
+            echo "Symbol package was not generated: $SYMBOL_PACKAGE"
+            exit 1
+          fi
+
+          unzip -l "$PACKAGE" > package-contents.txt
+
+          grep -Fq "lib/net10.0/Majo.Command.dll" package-contents.txt
+          grep -Fq "README.nuget.md" package-contents.txt
+          grep -Fq "LICENSE.txt" package-contents.txt
+
+      - name: Restore Test from local NuGet package
+        run: >
+          dotnet restore
+          Majo.Command.Test/Majo.Command.Test.csproj
+          -p:UsePackageReference=true
+          --force
+
+      - name: Test from local NuGet package
+        run: >
+          dotnet test
+          Majo.Command.Test/Majo.Command.Test.csproj
+          -c Release
+          --no-restore
+          -p:UsePackageReference=true
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: Majo.Command-NuGet
+          path: |
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.snupkg
+          if-no-files-found: error
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish to NuGet.org
+        run: >
+          dotnet nuget push
+          artifacts/nuget/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+
+      - name: Create Git tag
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "${RELEASE_TAG}" "$GITHUB_SHA" -m "Majo.Command ${PACKAGE_VERSION}"
+          git push origin "${RELEASE_TAG}"

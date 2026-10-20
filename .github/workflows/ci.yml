@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # NuGet.config declares artifacts/nuget as a local source.
+      - name: Prepare local NuGet source
+        run: mkdir -p artifacts/nuget
+
+      - name: Restore
+        run: dotnet restore Majo.Command.slnx -p:UsePackageReference=false
+
+      - name: Build
+        run: dotnet build Majo.Command.slnx -c Release --no-restore -p:UsePackageReference=false
+
+      - name: Test
+        run: dotnet test Majo.Command.Test/Majo.Command.Test.csproj -c Release --no-build --no-restore -p:UsePackageReference=false
+
+  package:
+    name: Pack and Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Prepare local NuGet source
+        run: mkdir -p artifacts/nuget
+
+      - name: Restore
+        run: dotnet restore Majo.Command.slnx -p:UsePackageReference=false
+
+      - name: Build
+        run: dotnet build Majo.Command.slnx -c Release --no-restore -p:UsePackageReference=false
+
+      - name: Pack
+        run: dotnet pack Majo.Command/Majo.Command.csproj -c Release --no-build
+
+      - name: Validate NuGet package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE_FILE="$(find artifacts/nuget -maxdepth 1 -type f -name 'Majo.Command.*.nupkg' -print -quit)"
+          SYMBOL_FILE="$(find artifacts/nuget -maxdepth 1 -type f -name 'Majo.Command.*.snupkg' -print -quit)"
+
+          if [ -z "$PACKAGE_FILE" ] || [ -z "$SYMBOL_FILE" ]; then
+            echo "Majo.Command NuGet package or symbol package is missing."
+            exit 1
+          fi
+
+          unzip -l "$PACKAGE_FILE" > package-contents.txt
+          grep -Fq 'lib/net10.0/Majo.Command.dll' package-contents.txt
+          grep -Fq 'README.nuget.md' package-contents.txt
+          grep -Fq 'LICENSE.txt' package-contents.txt
+
+      - name: Restore Test project from local NuGet package
+        run: >
+          dotnet restore Majo.Command.Test/Majo.Command.Test.csproj
+          -p:UsePackageReference=true --force
+
+      - name: Test local NuGet package
+        run: >
+          dotnet test Majo.Command.Test/Majo.Command.Test.csproj
+          -c Release --no-restore -p:UsePackageReference=true
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: Majo.Command-NuGet
+          path: |
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.snupkg
+          if-no-files-found: error

@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <PackageId>Majo.Command</PackageId>
+        <Version>0.0.1</Version>
+        <PackageReleaseNotes>Initial release.</PackageReleaseNotes>
+        <Authors>Sweety Majo</Authors>
+        <Description>A lightweight, typed command-tree library for .NET.</Description>
+        <PackageTags>command;command-parser;command-tree;cli;command-dispatcher</PackageTags>
+        <PackageOutputPath>$(MSBuildProjectDirectory)/../artifacts/nuget</PackageOutputPath>
+
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/sweetymajo/Majo.Command</RepositoryUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <PackageProjectUrl>https://github.com/sweetymajo/Majo.Command</PackageProjectUrl>
+
+        <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.nuget.md" Pack="true" PackagePath="" />
+        <None Include="../LICENSE.txt" Pack="true" PackagePath="" />
+    </ItemGroup>
+    
+</Project>
