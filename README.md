@@ -6,6 +6,7 @@
 
 Define commands with a fluent builder, parse positional arguments, execute asynchronous handlers, and generate help from a single command tree.
 
+[![NuGet](https://img.shields.io/nuget/v/Majo.Command?style=flat-square&logo=nuget&logoColor=white)](https://www.nuget.org/packages/Majo.Command/)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 
 **English** · [简体中文](./README.zh-CN.md)
@@ -36,6 +37,14 @@ The API focuses on a simple workflow: **register commands, build the tree, and e
 ## Requirements
 
 - **.NET 10**
+
+## Installation
+
+`Majo.Command` is available on [NuGet.org](https://www.nuget.org/packages/Majo.Command/):
+
+```bash
+dotnet add package Majo.Command
+```
 
 ## Quick Start
 

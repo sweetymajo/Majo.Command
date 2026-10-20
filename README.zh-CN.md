@@ -6,6 +6,7 @@
 
 通过流畅的 Builder API 定义命令、解析位置参数、执行异步处理函数，并根据命令树自动生成帮助信息。
 
+[![NuGet](https://img.shields.io/nuget/v/Majo.Command?style=flat-square&logo=nuget&logoColor=white)](https://www.nuget.org/packages/Majo.Command/)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 
 [English](./README.md) · **简体中文**
@@ -36,6 +37,14 @@
 ## 环境要求
 
 - **.NET 10**
+
+## 安装
+
+`Majo.Command` 已发布至 [NuGet.org](https://www.nuget.org/packages/Majo.Command/)：
+
+```bash
+dotnet add package Majo.Command
+```
 
 ## 快速开始
 
